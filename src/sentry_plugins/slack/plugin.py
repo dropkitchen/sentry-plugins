@@ -36,6 +36,15 @@ class SlackPlugin(CorePluginMixin, notify.NotificationPlugin):
                 "help": "Your custom Slack webhook URL.",
             },
             {
+                "name": "webhook_prod",
+                "label": "Webhook URL for production",
+                "type": "url",
+                "placeholder": "e.g. https://hooks.slack.com/services/000000000/000000000/00000000000000000",
+                "required": False,
+                "help": "Slack webhook URL for production environment (required to have 'environment' in included tags below) .",
+            },
+
+            {
                 "name": "username",
                 "label": "Bot Name",
                 "type": "string",
@@ -146,6 +155,8 @@ class SlackPlugin(CorePluginMixin, notify.NotificationPlugin):
             return
 
         webhook = self.get_option("webhook", project)
+        webhook_prod = self.get_option("webhook_prod", project)
+        is_production_env = False
         username = (self.get_option("username", project) or "Sentry").strip()
         icon_url = self.get_option("icon_url", project)
         channel = (self.get_option("channel", project) or "").strip()
@@ -208,6 +219,10 @@ class SlackPlugin(CorePluginMixin, notify.NotificationPlugin):
                     continue
                 if excluded_tags and (key in excluded_tags or std_key in excluded_tags):
                     continue
+
+                if tag_value == 'production':
+                    is_production_env = True
+
                 fields.append(
                     {
                         "title": tag_key.encode("utf-8"),
@@ -238,6 +253,9 @@ class SlackPlugin(CorePluginMixin, notify.NotificationPlugin):
             payload["icon_url"] = icon_url
 
         values = {"payload": json.dumps(payload)}
+
+        if is_production_env and webhook_prod:
+            webhook = webhook_prod
 
         # Apparently we've stored some bad data from before we used `URLField`.
         webhook = webhook.strip(" ")
